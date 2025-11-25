@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой Telegram App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Мой Третий Telegram App</h1>
+            <p>Простой чат между пользователями</p>
+        </div>
+
+        <div class="games-grid">
+            <div class="game-card" onclick="openChat()">
+                <div class="game-icon">💬</div>
+                <h3>Простой Чат</h3>
+                <p>Общайтесь в реальном времени</p>
+                <div class="game-badge">Мультиплеер</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Откройте чат и проверьте работу!</p>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.enableClosingConfirmation();
+
+        function openChat() {
+            window.location.href = '/chat';
+        }
+    </script>
+</body>
+</html>
