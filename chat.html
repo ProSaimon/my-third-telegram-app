@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Простой Чат</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .status {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            overflow-y: auto;
+            max-height: 60vh;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .message.system {
+            background: rgba(255,255,255,0.05);
+            text-align: center;
+            font-style: italic;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255,255,255,0.9);
+        }
+
+        #sendButton {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 Простой Чат</h1>
+        </div>
+
+        <div class="status" id="connectionStatus">
+            🔄 Подключение к серверу...
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message system">
+                Добро пожаловать в чат!
+            </div>
+        </div>
+
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Введите сообщение...">
+            <button id="sendButton" onclick="sendMessage()">📤</button>
+        </div>
+    </div>
+
+    <script>
+        class SimpleChat {
+            constructor() {
+                this.ws = null;
+                this.userId = null;
+                this.userName = null;
+                this.connected = false;
+            }
+
+            initTelegram() {
+                const tg = window.Telegram.WebApp;
+                tg.expand();
+                tg.enableClosingConfirmation();
+                
+                const user = tg.initDataUnsafe.user;
+                if (user) {
+                    this.userId = user.id;
+                    this.userName = user.first_name || 'Аноним';
+                } else {
+                    this.userId = 'user_' + Math.random().toString(36).substr(2, 9);
+                    this.userName = 'Гость';
+                }
+                
+                this.connectToServer();
+            }
+
+            connectToServer() {
+                // ИСПОЛЬЗУЙ СВОЙ URL!
+                const serverUrl = 'wss://my-third-telegram-app-production.up.railway.app';
+                
+                this.ws = new WebSocket(serverUrl);
+                
+                this.ws.onopen = () => {
+                    this.connected = true;
+                    this.updateStatus('✅ Подключено к серверу', 'success');
+                    
+                    this.ws.send(JSON.stringify({
+                        type: 'join',
+                        userId: this.userId,
+                        userName: this.userName
+                    }));
+                };
+
+                this.ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    this.handleMessage(message);
+                };
+
+                this.ws.onclose = () => {
+                    this.connected = false;
+                    this.updateStatus('❌ Соединение потеряно', 'error');
+                    setTimeout(() => this.connectToServer(), 3000);
+                };
+            }
+
+            handleMessage(message) {
+                const messagesContainer = document.getElementById('chatMessages');
+                
+                const messageElement = document.createElement('div');
+                
+                if (message.type === 'system') {
+                    messageElement.className = 'message system';
+                    messageElement.innerHTML = `⚡ ${message.message}`;
+                } else if (message.type === 'chat') {
+                    const isOwnMessage = message.userId === this.userId;
+                    messageElement.className = `message ${isOwnMessage ? 'own' : 'other'}`;
+                    
+                    messageElement.innerHTML = `
+                        <div><strong>${isOwnMessage ? 'Вы' : message.userName}:</strong> ${message.text}</div>
+                        <small>${message.timestamp}</small>
+                    `;
+                }
+                
+                messagesContainer.appendChild(messageElement);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            sendMessage() {
+                if (!this.connected) {
+                    alert('Нет подключения к серверу!');
+                    return;
+                }
+                
+                const input = document.getElementById('messageInput');
+                const text = input.value.trim();
+                
+                if (text) {
+                    this.ws.send(JSON.stringify({
+                        type: 'message',
+                        userId: this.userId,
+                        userName: this.userName,
+                        text: text
+                    }));
+                    
+                    input.value = '';
+                }
+            }
+
+            updateStatus(text, type) {
+                const statusElement = document.getElementById('connectionStatus');
+                statusElement.textContent = text;
+                
+                if (type === 'success') {
+                    statusElement.style.background = 'rgba(76, 175, 80, 0.3)';
+                } else if (type === 'error') {
+                    statusElement.style.background = 'rgba(244, 67, 54, 0.3)';
+                }
+            }
+        }
+
+        const chat = new SimpleChat();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            chat.initTelegram();
+        });
+
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                chat.sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            chat.sendMessage();
+        }
+    </script>
+</body>
+</html>
